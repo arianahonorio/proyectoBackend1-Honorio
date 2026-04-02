@@ -1,80 +1,55 @@
 import { Router } from "express";
-import fs from "fs";
+import CartModel from "../models/cart.model.js";
 
-const router = Router();
+const router= Router();
 
-const cartsPath = "./carts.json";
-const productsPath = "./products.json";
+//GET carrito con populate
+router.get("/:cid", async (req,res) => {
+    const cart= await CartModel.findById (req.params.cid)
+        .populate("products.product");
 
-const readFile = (path) => {
-    return JSON.parse(fs.readFileSync(path, "utf-8"));
-};
-
-const writeFile = (path, data) => {
-    fs.writeFileSync(path, JSON.stringify(data, null, 2));
-};
-
-const generateId = (array) => {
-    return array.length ? array[array.length - 1].id + 1 : 1;
-};
-
-// crear carrito
-router.post("/", (req, res) => {
-
-    const carts = readFile(cartsPath);
-
-    const newCart = {
-        id: generateId(carts),
-        products: []
-    };
-
-    carts.push(newCart);
-
-    writeFile(cartsPath, carts);
-
-    res.json(newCart);
+    res.json(cart);
 });
 
-// ver carrito
-router.get("/:cid", (req, res) => {
+//DELETE producto del carrito
+router.delete ("/:cid/products/:pid", async (req, res) =>{
+    const cart= await CartModel.findById(req.params.cid);
 
-    const carts = readFile(cartsPath);
-
-    const cart = carts.find(c => c.id === Number(req.params.cid));
-
-    if (!cart) {
-        return res.status(404).json({ error: "Carrito no encontrado" });
-    }
-
-    res.json(cart.products);
+    cart.products = cart.products.filter(
+        p=> p.product.toString() !== req.params.pid
+    );
+    await cart.save();
+    res.json(cart);
 });
 
-// agregar producto al carrito
-router.post("/:cid/product/:pid", (req, res) => {
+//PUT actualizar todo el carrito
+router.put ("/:cid", async (req,res) => {
+    const updatedCart = await CartModel.findByIdAndUpdate (
+        req.params.cid,
+        {products: req.body.products},
+        {new: true}
+    );
+    res.json(updatedCart);
+});
 
-    const carts = readFile(cartsPath);
-    const products = readFile(productsPath);
-
-    const cart = carts.find(c => c.id === Number(req.params.cid));
-    const product = products.find(p => p.id === Number(req.params.pid));
-
-    if (!cart || !product) {
-        return res.status(404).json({ error: "Carrito o producto no encontrado" });
+//PUT actualizar cantidad
+router.put("/:cid/products/:pid", async (req, res) =>{
+    const {quantity} =req.body;
+    const cart= cart.products.find(
+        p=> p.product.toString() === req.params.pid
+    );
+    if (product) {
+        product.quantity=quantity;
     }
+    await cart.save();
+    res.json(cart);
+});
 
-    const existing = cart.products.find(p => p.product === product.id);
-
-    if (existing) {
-        existing.quantity++;
-    } else {
-        cart.products.push({
-            product: product.id,
-            quantity: 1
-        });
-    }
-
-    writeFile(cartsPath, carts);
-
+//DELETE vaciar carrito
+router.delete("/:cid", async (req, res) =>{
+    const cart= await CartModel.findById(req.params.cid);
+    cart.products= [];
+    await cart.save();
     res.json(cart);
 });
 

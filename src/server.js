@@ -1,37 +1,21 @@
 import express from "express";
-import { engine } from "express-handlebars";
-import { Server } from "socket.io";
-import http from "http";
+import mongoose from "mongoose";
 
-import productsRouter from "./routes/products.router.js";
-import cartsRouter from "./routes/carts.router.js";
-import viewsRouter from "./routes/views.router.js";
+import productsRouter from "routes/products.router.js";
+import cartsRouter from "routes/carts.router.js";
 
 const app = express();
 const PORT = 8080;
 
-const server = http.createServer(app);
-const io = new Server(server);
-
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static("src/public"));
 
-// Handlebars
-app.engine("handlebars", engine());
-app.set("view engine", "handlebars");
-app.set("views", "./src/views");
+mongoose.connect("mongodb://127.0.0.1:27017/ecommerce")
+    .then(() => console.log("MongoDB conectado"))
+    .catch(err => console.log(err));
 
-// routers
-app.use("/api/products", productsRouter(io));
+app.use("/api/products", productsRouter);
 app.use("/api/carts", cartsRouter);
-app.use("/", viewsRouter);
 
-// websocket
-io.on("connection", (socket) => {
-    console.log("Cliente conectado");
-});
-
-server.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+app.listen(PORT, () => {
+    console.log (`Servidor corriendo en puerto ${PORT}`);
 });
